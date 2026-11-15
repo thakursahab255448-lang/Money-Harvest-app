@@ -1,0 +1,178 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1: Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Hardened Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    // 1. LearningProgress Validation Blueprint
+    function isValidLearningProgress(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId == request.auth.uid &&
+             data.itemType is string && data.itemType in ['course', 'quiz', 'cyber', 'education'] &&
+             data.itemKey is string && data.itemKey.size() >= 1 && data.itemKey.size() <= 100 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+             data.score is int && data.score >= 0 && data.score <= 100 &&
+             data.completed is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    // 2. CertificateRecord Validation Blueprint
+    function isValidCertificateRecord(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId == request.auth.uid &&
+             data.recipientName is string && data.recipientName.size() >= 1 && data.recipientName.size() <= 100 &&
+             data.courseTitle is string && data.courseTitle.size() >= 1 && data.courseTitle.size() <= 150 &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 60 &&
+             data.scorePercent is int && data.scorePercent >= 0 && data.scorePercent <= 100 &&
+             data.verificationCode is string && data.verificationCode.size() >= 4 && data.verificationCode.size() <= 60 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    // 3. ScamScanRecord Validation Blueprint
+    function isValidScamScanRecord(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId == request.auth.uid &&
+             data.inputTitle is string && data.inputTitle.size() >= 1 && data.inputTitle.size() <= 200 &&
+             data.riskLevel is string && data.riskLevel in ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] &&
+             data.riskScore is int && data.riskScore >= 0 && data.riskScore <= 100 &&
+             data.verdictSummary is string && data.verdictSummary.size() >= 1 && data.verdictSummary.size() <= 1000 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    // 4. CommunityPost Validation Blueprint
+    function isValidCommunityPost(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId == request.auth.uid &&
+             data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80 &&
+             data.category is string && data.category in ['Scam Alert', 'Wealth Tip', 'Cybersecurity', 'Q&A', 'Success Story'] &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+             data.body is string && data.body.size() >= 1 && data.body.size() <= 2000 &&
+             data.likesCount is int && data.likesCount >= 0 && data.likesCount <= 1000000 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    match /users/{userId} {
+      // Collection 1: LearningProgress
+      match /progress/{progressId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(progressId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(progressId) &&
+                         incoming().keys().hasAll(['userId', 'itemType', 'itemKey', 'title', 'score', 'completed', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'itemType', 'itemKey', 'title', 'score', 'completed', 'createdAt', 'updatedAt']) &&
+                         isValidLearningProgress(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(progressId) &&
+                         isValidLearningProgress(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().itemKey == existing().itemKey &&
+                         incoming().itemType == existing().itemType &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'score', 'completed', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(progressId);
+      }
+
+      // Collection 2: CertificateRecord
+      match /certificates/{certId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(certId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(certId) &&
+                         incoming().keys().hasAll(['userId', 'recipientName', 'courseTitle', 'category', 'scorePercent', 'verificationCode', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'recipientName', 'courseTitle', 'category', 'scorePercent', 'verificationCode', 'createdAt', 'updatedAt']) &&
+                         isValidCertificateRecord(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(certId) &&
+                         isValidCertificateRecord(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().verificationCode == existing().verificationCode &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['recipientName', 'scorePercent', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(certId);
+      }
+
+      // Collection 3: ScamScanRecord
+      match /scam_scans/{scanId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(scanId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(scanId) &&
+                         incoming().keys().hasAll(['userId', 'inputTitle', 'riskLevel', 'riskScore', 'verdictSummary', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'inputTitle', 'riskLevel', 'riskScore', 'verdictSummary', 'createdAt', 'updatedAt']) &&
+                         isValidScamScanRecord(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(scanId) &&
+                         isValidScamScanRecord(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['inputTitle', 'riskLevel', 'riskScore', 'verdictSummary', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(scanId);
+      }
+
+      // Collection 4: CommunityPost
+      match /community_posts/{postId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(postId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(postId) &&
+                         incoming().keys().hasAll(['userId', 'authorName', 'category', 'title', 'body', 'likesCount', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'authorName', 'category', 'title', 'body', 'likesCount', 'createdAt', 'updatedAt']) &&
+                         isValidCommunityPost(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(postId) &&
+                         isValidCommunityPost(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'body', 'category', 'likesCount', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(postId);
+      }
+    }
+  }
+}

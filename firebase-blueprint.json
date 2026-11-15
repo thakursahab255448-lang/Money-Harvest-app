@@ -1,0 +1,189 @@
+{
+  "entities": {
+    "LearningProgress": {
+      "title": "LearningProgress",
+      "description": "Tracks user completion and scores across Financial Education modules, Courses, Cybersecurity checklists, and Quiz Challenges.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The authenticated owner UID."
+        },
+        "itemType": {
+          "type": "string",
+          "description": "Category of learning item.",
+          "enum": ["course", "quiz", "cyber", "education"]
+        },
+        "itemKey": {
+          "type": "string",
+          "description": "Unique identifier key of the course, quiz, or module."
+        },
+        "title": {
+          "type": "string",
+          "description": "Display title of the completed item."
+        },
+        "score": {
+          "type": "integer",
+          "description": "Score percentage from 0 to 100."
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Whether the item has been completed."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when last updated via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "itemType", "itemKey", "title", "score", "completed", "createdAt", "updatedAt"]
+    },
+    "CertificateRecord": {
+      "title": "CertificateRecord",
+      "description": "Official Money Harvest certificate earned by the user upon completing courses or quizzes.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The authenticated owner UID."
+        },
+        "recipientName": {
+          "type": "string",
+          "description": "Full name displayed on the certificate."
+        },
+        "courseTitle": {
+          "type": "string",
+          "description": "Title of the certified course or quiz challenge."
+        },
+        "category": {
+          "type": "string",
+          "description": "Certification track category."
+        },
+        "scorePercent": {
+          "type": "integer",
+          "description": "Final achievement score percentage (0 to 100)."
+        },
+        "verificationCode": {
+          "type": "string",
+          "description": "Unique certificate verification hash code."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when issued via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when updated via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "recipientName", "courseTitle", "category", "scorePercent", "verificationCode", "createdAt", "updatedAt"]
+    },
+    "ScamScanRecord": {
+      "title": "ScamScanRecord",
+      "description": "Saved AI Scam Detector analysis record for suspicious messages, links, or financial offers.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The authenticated owner UID."
+        },
+        "inputTitle": {
+          "type": "string",
+          "description": "Snippet or title of the scanned message or URL."
+        },
+        "riskLevel": {
+          "type": "string",
+          "description": "Assessed scam risk level.",
+          "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+        },
+        "riskScore": {
+          "type": "integer",
+          "description": "Risk score from 0 to 100."
+        },
+        "verdictSummary": {
+          "type": "string",
+          "description": "Summary of the AI scam detection analysis."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when scanned via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when updated via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "inputTitle", "riskLevel", "riskScore", "verdictSummary", "createdAt", "updatedAt"]
+    },
+    "CommunityPost": {
+      "title": "CommunityPost",
+      "description": "User-authored community post sharing financial tips, scam warnings, or questions.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The authenticated author UID."
+        },
+        "authorName": {
+          "type": "string",
+          "description": "Display name of the author."
+        },
+        "category": {
+          "type": "string",
+          "description": "Discussion category tag.",
+          "enum": ["Scam Alert", "Wealth Tip", "Cybersecurity", "Q&A", "Success Story"]
+        },
+        "title": {
+          "type": "string",
+          "description": "Headline of the community post."
+        },
+        "body": {
+          "type": "string",
+          "description": "Content body of the community post."
+        },
+        "likesCount": {
+          "type": "integer",
+          "description": "Number of likes on the post."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when updated via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "authorName", "category", "title", "body", "likesCount", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/progress/{progressId}": {
+      "schema": { "$ref": "#/entities/LearningProgress" },
+      "description": "Per-user learning, quiz, course, and cybersecurity progress items."
+    },
+    "/users/{userId}/certificates/{certId}": {
+      "schema": { "$ref": "#/entities/CertificateRecord" },
+      "description": "Per-user earned official Money Harvest certificates."
+    },
+    "/users/{userId}/scam_scans/{scanId}": {
+      "schema": { "$ref": "#/entities/ScamScanRecord" },
+      "description": "Per-user history of AI Scam Detector analyses."
+    },
+    "/users/{userId}/community_posts/{postId}": {
+      "schema": { "$ref": "#/entities/CommunityPost" },
+      "description": "Per-user authored community posts and scam alerts."
+    }
+  }
+}
